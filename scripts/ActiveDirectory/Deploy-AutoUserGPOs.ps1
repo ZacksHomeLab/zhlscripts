@@ -22,7 +22,7 @@ if (-not(Get-ScheduledTask -TaskName 'Auto User GPUpdate' -ErrorAction SilentlyC
             (Get-Command -Name wscript.exe -Erroraction SilentlyContinue).Path -Argument 'C:\Windows\RunUserGPO.vbs /NoLogo') `
             -Settings (New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 3) -DontStopIfGoingOnBatteries `
             -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 10)) -Principal (New-ScheduledTaskPrincipal -UserId $UserName) `
-            -Description 'Testing Remote Scheduled task.'
+            -Description 'Automatically perform group policy updates for Users every 2 hours.'
     } else { 
         Write-Output 'No Active Users exist.'
     }
