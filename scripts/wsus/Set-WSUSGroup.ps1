@@ -4,7 +4,7 @@
 .DESCRIPTION
     This script will apply WSUS Registry Settings and add said computer to the provided group in WSUS.
 .NOTES
-    Author - Zack Flowers
+    Author - Zack
 .PARAMETER WSUSServer
     The FQDN of your WSUS Server (e.g., wsus01.yourcompany.com)
 .PARAMETER Group
