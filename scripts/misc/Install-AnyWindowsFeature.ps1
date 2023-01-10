@@ -27,7 +27,6 @@
     The above would install the SNMP client Capability Feature and the RSAT Active Directory Capability Feature.
 
 .LINK
-https://wiki.zackshomelab.com
 https://github.com/ZacksHomeLab
 #>
 [cmdletbinding(SupportsShouldProcess)]
