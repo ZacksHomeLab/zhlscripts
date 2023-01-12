@@ -61,7 +61,7 @@ try {
 }
 
 if (Test-Path -Path $backuppath) {
-    Send-Email -Subject "DHCP Backup Succses" -Results Success
+    Send-Email -Subject "DHCP Backup Success" -Results Success
 } else {
     $Message = "Backup-DHCPServer ran successfully but could not find Backup Item: $BackupPath."
     Write-Error $Message
