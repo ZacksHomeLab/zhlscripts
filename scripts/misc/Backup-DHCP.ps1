@@ -26,12 +26,12 @@ function Send-Email {
 
 # Exit codes
 $exitCode_FailureCreatingDirectory = 10
-$exitCode_FailureEnterPSSession = 11
-$exitCode_FailureRunningBackupFunction = 12
-$exitCode_FailureFindingBackupFile = 13
+$exitCode_FailureRunningBackupFunction = 11
+$exitCode_FailureFindingBackupFile = 12
 
 try {
     $backuppath = "\\192.168.123.2\Backups\CCC-DC1\DHCP\DHCP-SCOPES-AUTO-BCKUP\dhcp-backup" + ([datetime]::now.ToString('yyyy-MM-dd-hh-mm'))
+    Write-Output "Attempting to create Backup Path $BackupPath..."
     if (-not (Test-Path -Path $BackupPath)) {
         New-Item -ItemType Directory -Path $BackupPath -ErrorAction Stop
     }
@@ -43,18 +43,12 @@ try {
 }
 
 try {
-    Write-Output "Attempting to Enter CCC-DC1's PSSession"
-    Enter-PSSession -ComputerName CCC-DC1 -ErrorAction Stop
-} catch {
-    $Message = $_ | Out-String
-    Write-Error "Failed Entering PSSession for Computer 'CCC-DC1'"
-    Send-Email -Subject "DHCP Backup Error: Failure Entering PSSession" -ErrorMessage $Message -Results Fail
-    exit $exitCode_FailureEnterPSSession
-}
+    Write-Output "Attempting to Backup DHCP remotely..."
 
-try {
-    Write-Output "Attempting to Backup DHCP to $BackupPath"
-    Backup-DHCPServer -ComputerName "CCC-DC1.ccc.local" -Path $BackupPath -ErrorAction Stop
+    Invoke-Command -ComputerName "CCC-DC1" -ScriptBlock {
+        Backup-DHCPServer -ComputerName "CCC-DC1" -Path $using:BackupPath -ErrorAction Stop
+    } -ErrorAction Stop
+
 } catch {
     $Message = $_ | Out-String
     Write-Error "Failure running Backup-DHCPServer."
@@ -63,6 +57,7 @@ try {
 }
 
 if (Test-Path -Path $backuppath) {
+    Write-Output "Attempting to send success email..."
     Send-Email -Subject "DHCP Backup Success" -Results Success
 } else {
     $Message = "Backup-DHCPServer ran successfully but could not find Backup Item: $BackupPath."
