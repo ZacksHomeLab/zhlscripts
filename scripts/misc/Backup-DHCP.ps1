@@ -43,6 +43,7 @@ try {
 }
 
 try {
+    Write-Output "Attempting to Enter CCC-DC1's PSSession"
     Enter-PSSession -ComputerName CCC-DC1 -ErrorAction Stop
 } catch {
     $Message = $_ | Out-String
@@ -52,6 +53,7 @@ try {
 }
 
 try {
+    Write-Output "Attempting to Backup DHCP to $BackupPath"
     Backup-DHCPServer -ComputerName "CCC-DC1.ccc.local" -Path $BackupPath -ErrorAction Stop
 } catch {
     $Message = $_ | Out-String
