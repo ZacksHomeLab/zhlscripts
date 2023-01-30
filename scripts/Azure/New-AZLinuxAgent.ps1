@@ -159,7 +159,7 @@ begin {
             $DOCKER_GPG_URL = "https://download.docker.com/linux/ubuntu/gpg"
 
             $OLD_DOCKER_APTS = "docker docker-engine docker.io containerd runc"
-            $APT_ESSENTIALS = "ca-certificates gnupg lsb-release"
+            $APT_ESSENTIALS = "ca-certificates gnupg lsb-release uidmap"
             $APT_DOCKER = "docker-ce docker-ce-cli containerd.io docker-compose-plugin"
 
             # Reset these variables
@@ -427,13 +427,26 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommend
     unzip \
     wget \
     dotnet-sdk-6.0 \
-    aspnetcore-runtime-6.0
+    aspnetcore-runtime-6.0 \
+    npm \
+    nodejs \
+    gulp
 
 # An issue with Ubuntu 22.04 and Azure Agent. The work around is the below commands:
 # https://github.com/microsoft/azure-pipelines-agent/issues/3834
 RUN wget http://security.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.16_amd64.deb
 RUN dpkg -i libssl1.1_1.1.1f-1ubuntu2.16_amd64.deb && rm libssl1.1_1.1.1f-1ubuntu2.16_amd64.deb
 RUN sed -i 's/openssl_conf = openssl_init/#openssl_conf = openssl_init/g' /etc/ssl/openssl.cnf
+
+# Install Apache JMeter 5.5 & Java 8
+#RUN wget https://dlcdn.apache.org//jmeter/binaries/apache-jmeter-5.5.tgz
+#RUN tar xzf apache-jmeter-5.5.tgz
+#RUN DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends default-jre
+
+# Install Docker (Specifically to build docker images for Azure Pipelines)
+RUN curl -fsSL https://get.docker.com -o get-docker.sh
+RUN chmod +x get-docker.sh
+RUN sh get-docker.sh
 
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
 
@@ -628,7 +641,7 @@ process {
                 # Run the docker container
                 try {
                     Start-Job -Name $JOB_NAME -ScriptBlock {
-                        Start-Process -FilePath (Get-Command -Name 'docker').Source -ArgumentList "run -e AZP_URL=$using:AzpUrl -e AZP_TOKEN=$(Get-Content -Path $using:AZP_TOKEN_FILE) -e AZP_AGENT_NAME=$using:AZP_AGENT_NAME dockeragent:latest" -ErrorAction Stop
+                        Start-Process -FilePath (Get-Command -Name 'docker').Source -ArgumentList "run -v /var/run/docker.sock:/var/run/docker.sock -e AZP_URL=$using:AzpUrl -e AZP_TOKEN=$(Get-Content -Path $using:AZP_TOKEN_FILE) -e AZP_AGENT_NAME=$using:AZP_AGENT_NAME dockeragent:latest" -ErrorAction Stop
                     } -ErrorAction Stop
                     Start-Sleep -Seconds 10
                 } catch {
