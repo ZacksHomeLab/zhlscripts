@@ -1,7 +1,9 @@
+$GPOName = "Auto User GPUpdate"
+
 # The below code will deploy a task scehduler to run every 2 hours to apply User GPO Updates.
 # The Scheduled Task uses a VBS script to hide any command prompt / PowerShell windows.
 # NOTE: This looks for usernames that have the regular express match of 'firstName.lastName', you may want to modify that.
-if (-not(Get-ScheduledTask -TaskName 'Auto User GPUpdate' -ErrorAction SilentlyContinue)) {
+if (-not(Get-ScheduledTask -TaskName $GPOName -ErrorAction SilentlyContinue)) {
     $quserResult = quser /server:$env:COMPUTERNAME 2>&1
     $UserIds = ($quserResult | ForEach-Object -Process { $_ -replace '\s{2,}',',' } | ConvertFrom-Csv)
     $UserName = $UserIDs | Where-Object {$_.USERNAME -match '[a-zA-Z].*\.[a-zA-Z].*' -and $_.STATE -eq 'ACTIVE'} `
@@ -17,7 +19,8 @@ if (-not(Get-ScheduledTask -TaskName 'Auto User GPUpdate' -ErrorAction SilentlyC
             Add-Content -Path $File -Value 'Wscript.quit(Result)' -Force
         }
         
-        Register-ScheduledTask -TaskName 'Auto User GPUpdate' -Trigger (New-ScheduledTaskTrigger -Once -RepetitionInterval `
+        # Scheduled Task options
+        Register-ScheduledTask -TaskName $GPOName -Trigger (New-ScheduledTaskTrigger -Once -RepetitionInterval `
             (New-TimeSpan -Hours 2) -At (Get-Date)) -Action (New-ScheduledTaskAction -Execute `
             (Get-Command -Name wscript.exe -Erroraction SilentlyContinue).Path -Argument 'C:\Windows\RunUserGPO.vbs /NoLogo') `
             -Settings (New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 3) -DontStopIfGoingOnBatteries `
