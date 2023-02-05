@@ -280,7 +280,7 @@ process {
         # See if SSH is enabled on boot
         if (-not (Get-Process -Name sshd -ErrorAction SilentlyContinue)) {
             Write-Output "Main: Starting SSH..."
-            Start-Process -FilePath (Get-Command -Name systemctl).Source -ArgumentList "start ssh" -ErrorAction Stop -Wait
+            Start-Process -FilePath (Get-Command -Name systemctl).Source -ArgumentList "start sshd" -ErrorAction Stop -Wait
         }
     } catch {
         Write-Warning "Main: Failed starting SSH due to error $_"
@@ -421,44 +421,38 @@ process {
     if (-not $SkipCustomSSHFile) {
         Write-Output "`nMain: Creating Custom SSH File: $CUSTOM_SSH_FILE"
 
-        $CUSTOM_SSH_FILE_CONTENTS = "PermitRootLogin no"
-
+        if ($EnablePSRemote) {
+            $CUSTOM_SSH_FILE_CONTENTS = "PermitRootLogin no", "Subsystem powershell /usr/bin/pwsh -sshs -nologo"
+        } else {
+            $CUSTOM_SSH_FILE_CONTENTS = "PermitRootLogin no"
+        }
+        
+        # Remove the file if it exists
+        if (Test-Path -Path $CUSTOM_SSH_FILE) {
+            try {
+                Write-Output "Main: File $CUSTOM_SSH_FILE already exists, removing."
+                # Removing the file and starting over
+                Remove-Item -Path $CUSTOM_SSH_FILE -Force -ErrorAction Stop
+            } catch {
+                Write-Warning "Main: Failed removing Custom SSH File at $CUSTOM_SSH_FILE due to error $_"
+                exit $exitcode_FailRemoveExistingSSHFile
+            }
+        }
+        
         # Generate the SSH_AD_GROUPS string
         if ($PSBoundParameters.ContainsKey('SSHADGroups')) {
             # Create the SSH_AD_GROUPS variable and join the array of provided strings. Replace white space with a backslash
             $SSH_AD_GROUPS = $SSHADGroups.Replace(' ', '\ ') | Join-String -Separator ', '
         }
 
-        if (-not (Test-Path -Path $CUSTOM_SSH_FILE)) {
-            try {
-                Add-Content -Path $CUSTOM_SSH_FILE -Value $CUSTOM_SSH_FILE_CONTENTS -Force -ErrorAction Stop
-                if ($null -ne $SSH_AD_GROUPS) {
-                    Add-Content -Path $CUSTOM_SSH_FILE -Value "AllowGroups $SSH_AD_GROUPS" -Force -ErrorAction Stop
-                }
-            } catch {
-                Write-Warning "Main: Failure adding content to the custom ssh file at $CUSTOM_SSH_FILE due to error $_"
-                exit $exitcode_FailAdddingSSHCustomFileContent
+        try {
+            Add-Content -Path $CUSTOM_SSH_FILE -Value $CUSTOM_SSH_FILE_CONTENTS -Force -ErrorAction Stop
+            if ($null -ne $SSH_AD_GROUPS) {
+                Add-Content -Path $CUSTOM_SSH_FILE -Value "AllowGroups $SSH_AD_GROUPS" -Force -ErrorAction Stop
             }
-
-        } else {
-            Write-Output "Main: File $CUSTOM_SSH_FILE already exists, removing."
-            # Removing the file and starting over
-            try {
-                Remove-Item -Path $CUSTOM_SSH_FILE -Force -ErrorAction Stop
-            } catch {
-                Write-Warning "Main: Failed removing Custom SSH File at $CUSTOM_SSH_FILE due to error $_"
-                exit $exitcode_FailRemoveExistingSSHFile
-            }
-            Write-Output "Main: Creating Custom SSH File: $CUSTOM_SSH_FILE"
-            try {
-                Add-Content -Path $CUSTOM_SSH_FILE -Value $CUSTOM_SSH_FILE_CONTENTS -Force -ErrorAction Stop
-                if ($null -ne $SSH_AD_GROUPS) {
-                    Add-Content -Path $CUSTOM_SSH_FILE -Value $SSH_AD_GROUPS -Force -ErrorAction Stop
-                }
-            } catch {
-                Write-Warning "Main: Failure adding content to the custom ssh file at $CUSTOM_SSH_FILE due to error $_"
-                exit $exitcode_FailAdddingSSHCustomFileContent
-            }
+        } catch {
+            Write-Warning "Main: Failure adding content to the custom ssh file at $CUSTOM_SSH_FILE due to error $_"
+            exit $exitcode_FailAdddingSSHCustomFileContent
         }
     }
     #endregion
