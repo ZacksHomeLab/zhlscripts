@@ -422,7 +422,7 @@ process {
         Write-Output "`nMain: Creating Custom SSH File: $CUSTOM_SSH_FILE"
 
         if ($EnablePSRemote) {
-            $CUSTOM_SSH_FILE_CONTENTS = "PermitRootLogin no", "Subsystem powershell /usr/bin/pwsh -sshs -nologo"
+            $CUSTOM_SSH_FILE_CONTENTS = "PermitRootLogin no", "Subsystem powershell /usr/bin/pwsh -sshs -nologo", "PubkeyAuthentication yes", "AuthorizedKeysFile     .ssh/authorized_keys"
         } else {
             $CUSTOM_SSH_FILE_CONTENTS = "PermitRootLogin no"
         }
