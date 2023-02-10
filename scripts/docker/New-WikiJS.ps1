@@ -2072,7 +2072,7 @@ process {
     #   -v pgdata:/var/lib/postgresql/data --restart=unless-stopped -h db --network=wikinet postgres:11
     $(& "docker" "create" "--name=$CONTAINER_DB_NAME" "-e POSTGRES_DB=$DB_NAME" "-e POSTGRES_PASSWORD_FILE=$DB_SECRET_LOCATION" `
         "-v $DB_SECRET_LOCATION`:$DB_SECRET_LOCATION`:ro" "-v $DB_VOLUME_NAME`:/var/lib/postgresql/data" "--restart=unless-stopped" "-h $CONTAINER_DB_NAME" `
-        "--network=$NETWORK_NAME" "postgress`:11")
+        "--network=$NETWORK_NAME" "postgres`:11")
     
     # Did we get an error?
     if ($LASTEXITCODE -ne 0) {
