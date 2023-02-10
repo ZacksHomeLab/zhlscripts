@@ -1897,7 +1897,7 @@ begin {
     $NETWORK_NAME = 'wikinet'
     $WIKI_HTTP_PORT = '3000'
     $WIKI_HTTPS_PORT = '3443'
-    $WIKI_DOCKER_IMAGE = "ghcr.io/requarks/wiki:"
+    $WIKI_DOCKER_IMAGE = "ghcr.io/requarks/wiki:2"
     $WIKI_COMPANION_DOCKER_IMAGE = "ghcr.io/requarks/wiki-update-companion:latest"
 
     # Database Variables
