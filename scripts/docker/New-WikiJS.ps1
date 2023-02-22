@@ -1989,7 +1989,7 @@ process {
 
         try {
             Write-Output "`nMain: Storing Let's Encrypt API Credentials to $LE_CLOUDFLARE_API_FILE"
-            Tee-Object -InputObject (ConvertFrom-SecureString -SecureString $CloudFlareAPIToken -AsPlainText) -FilePath $LE_CLOUDFLARE_API_FILE -ErrorAction Stop
+            Tee-Object -InputObject (ConvertFrom-SecureString -SecureString $CloudFlareAPIToken -AsPlainText) -FilePath $LE_CLOUDFLARE_API_FILE -ErrorAction Stop | Out-Null
 
             # Set the permissions of said file to 600
             Start-Process -FilePath (Get-Command -Name 'chmod').Source -ArgumentList "600 $LE_CLOUDFLARE_API_FILE"
