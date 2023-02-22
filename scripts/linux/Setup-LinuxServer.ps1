@@ -26,8 +26,8 @@
 .PARAMETER SudoADGroups
     The Active Directory Groups that can have sudo permissions. (e.g., "Group 1", "Group_2")
 .EXAMPLE
-    ./Backup-Bitwarden.ps1 -SSHSubnets "192.168.1.0/24" -Domain "zackshomelab.com" -NTPServer "time.zackshomelab.com" -ADUsername "Zack" -ADPassword ('MY_PASSWORD' | ConvertTo-SecureSTring -AsPlainText) `
-    -SSHADGroups "server_admins" -SudoADGroups "server_admins"
+    ./Setup-LinuxServer.ps1 -SSHSubnets "192.168.1.0/24" -Domain "zackshomelab.com" -NTPServer "time.zackshomelab.com" -ADUsername "Zack" -ADPassword ('MY_PASSWORD' | ConvertTo-SecureSTring -AsPlainText) `
+    -SSHADGroups "server_admins" -SudoADGroups "server_admins" -SSSDADGroups "server_admins"
 .NOTES
     Author - Zack
 .LINK
