@@ -22,7 +22,7 @@
 
     The above will create a Service Principal named "Test SP" within Subscription "ZacksHomeLab".
 .EXAMPLE
-    ./New-AzServicePrincipal -SubscriptionID "12341234-1234-1234-123412341234" -SPName "Test SP" -CreateApp -AppName "TestApp"
+    ./New-AzServicePrincipal -SubscriptionID "12341234-1234-1234-123412341234" -CreateApp -AppName "TestApp"
     
     The above will create a Service Principal named "Test SP", create an Azure App named 'TestApp' and assign said app to our new Service Principal.
 .NOTES
