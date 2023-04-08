@@ -13,14 +13,18 @@
     If you have access to multiple tenants, input the TenantID that will house said Service Principal.
 .PARAMETER AzCreds
     The credentials used to connect to Azure.
+.PARAMETER CreateApp
+    Pass this switch if you want to create an Azure Application with your Service Principal and assign the App to said Principal.
+.PARAMETER AppName
+    The name of the Azure Application you wish to create. If a name is not given, $SPName will take its place.
 .EXAMPLE
     ./New-AzServicePrincipal -SubscriptionName "ZacksHomeLab" -SPName "Test SP" -AzCreds (Get-Credential)
 
     The above will create a Service Principal named "Test SP" within Subscription "ZacksHomeLab".
 .EXAMPLE
-    ./New-AzServicePrincipal -SubscriptionID "12341234-1234-1234-123412341234" -SPName "Test SP"
+    ./New-AzServicePrincipal -SubscriptionID "12341234-1234-1234-123412341234" -SPName "Test SP" -CreateApp -AppName "TestApp"
     
-    The above will create a Service Principal named "Test SP" within the provided Subscription ID
+    The above will create a Service Principal named "Test SP", create an Azure App named 'TestApp' and assign said app to our new Service Principal.
 .NOTES
     Author - Zack
 .LINK
@@ -61,11 +65,31 @@ param (
     [parameter(Mandatory=$false,
         Position=3)]
         [ValidateNotNullorEmpty()]
-    [System.Management.Automation.PSCredential]$AzCreds
+    [System.Management.Automation.PSCredential]$AzCreds,
+
+    [parameter(Mandatory=$false,
+        Position=4)]
+    [switch]$CreateApp,
+
+    [parameter(Mandatory=$false,
+        Position=5,
+        HelpMessage="Enter the name of your Azure Application")]
+        [ValidateNotNullOrEmpty()]
+    [string]$AppName
 )
 
 #region Variables
 $connectParams = @{}
+$newSPParams = @{}
+
+if ($PSBoundParameters.ContainsKey('CreateApp')) {
+    if ($null -eq $AppName -or $AppName -eq "") {
+        # Set AppName to SPName if an App Name wasn't provided
+        $AppName = $SPName
+    }
+
+    $AppID = $null
+}
 #endregion
 
 #region Functions
@@ -136,6 +160,7 @@ function Import-AZ {
 $exitCode_MissingPowerShellModule = 10
 $exitCode_ErrorConnectingToAzure = 11
 $exitCode_FailureCreateSP = 12
+$exitCode_FailureCreateApp = 13
 #endregion
 
 #region Connect to Azure Application
@@ -177,10 +202,34 @@ try {
 }
 #endregion
 
+#region Create Azure Application
+if ($PSBoundParameters.ContainsKey('CreateApp')) {
+
+    try {
+        if (-not (Get-AzAdApplication -DisplayNameStartWith $AppName -ErrorAction SilentlyContinue)) {
+            Write-Verbose "Attempting to create Azure Application $AppName..."
+            New-AzadApplication -DisplayName $AppName -ErrorAction Stop
+        } else {
+            Write-Verbose "Aplication $AppName already exists in Azure, skipping."
+        }
+    } catch {
+        Write-Warning "Failure creating Azure Application $AppName due to error $_."
+        exit $exitCode_FailureCreateApp
+    }
+    # Retrieve the Application ID of our new app
+    $AppID = Get-AzADApplication -DisplayNameStartWith $AppName | Select-Object -ExpandProperty AppId
+}
+#endregion
+
 #region Create Service Principal
 try {
-    Write-Verbose "Attempting to create Azure Service Principal $SPName..."
-    New-AzADServicePrincipal -DisplayName $SPName -ErrorAction Stop
+    if ($null -ne $AppID) {
+        Write-Verbose "Attempting to create Azure Service Principal with existing application $AppName"
+        New-AzADServicePrincipal -ApplicationId $AppID -ErrorAction Stop
+    } else {
+        Write-Verbose "Attempting to create Azure Service Principal $SPName..."
+        New-AzADServicePrincipal -DisplayName $SPName
+    }
 } catch {
     Write-Warning "Failure creating Service Principal due to error $_."
     Disconnect-AzAccount
