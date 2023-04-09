@@ -245,14 +245,12 @@ if ($null -eq $Location -or $Location -eq "") {
         $Location = Get-AzResourceGroup -Name $ResourceGroupName -ErrorAction Stop | Select-Object -ExpandProperty Location
     } catch {
         Write-Warning "The provided Resource Group Name ($ResourceGroupName) does not exist in Azure."
-        Disconnect-AzAccount
         exit $exitCode_ResourceGroupNotExist
     }
 } else {
     Write-Verbose "Validating if Resource Group $ResourceGroupName and Location $Location exist in Azure..."
     if (-not (Get-AZResourceGroup -Name $ResourceGroupName -Location $Location -ErrorAction SilentlyContinue)) {
         Write-Warning "The provided Resource Group Name ($ResourceGroupName) and Location ($Location) does not exist in Azure."
-        Disconnect-AzAccount
         exit $exitCode_ResourceGroupAndLocationNotExist
     }
 }
@@ -280,7 +278,6 @@ try {
 
 } catch {
     Write-Warning "Failure creating Automation Account $Name due to error $_."
-    Disconnect-AzAccount
     exit $exitCode_FailureCreateAutoAccount
 }
 #endregion
