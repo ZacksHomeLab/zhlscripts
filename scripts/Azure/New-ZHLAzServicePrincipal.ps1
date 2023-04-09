@@ -18,13 +18,13 @@
 .PARAMETER AppName
     The name of the Azure Application you wish to create. If a name is not given, $Name will take its place.
 .PARAMETER Tags
-    A comma separated string containing key:value tags attached to the service principal or application (e.g., "key:value", "key2:value2")
+    A hashtable containing key:value tags attached to the service principal or application (e.g., @{'key'='value'; 'key2'='value2'}
 .EXAMPLE
-    ./New-ZHLAzServicePrincipal -SubscriptionName "ZacksHomeLab" -Name "Test SP" -AzCreds (Get-Credential) -tag "test:value"
+    ./New-ZHLAzServicePrincipal -SubscriptionName "ZacksHomeLab" -Name "Test SP" -AzCreds (Get-Credential) -tags @{'test'='value'}
 
     The above will create a Service Principal named "Test SP" within Subscription "ZacksHomeLab".
 .EXAMPLE
-    ./New-ZHLAzServicePrincipal.ps1 -SubscriptionName "ZacksHomeLab" -AzCreds $AzCreds -Name "ZHLKeyVault" -CreateApp -Tag "zhl-resource:zhl-app-keyvault"
+    ./New-ZHLAzServicePrincipal.ps1 -SubscriptionName "ZacksHomeLab" -AzCreds $AzCreds -Name "ZHLKeyVault" -CreateApp -Tag @{'zhl-resource'='zhl-app-keyvault'}
     
     The above will create an Application within Subscription "ZacksHomeLab", creates a Service Principal from the new Applications, and adds the necessary tags.
 .NOTES
@@ -74,8 +74,8 @@ param (
 
     [parameter(Mandatory=$false,
         Position=5)]
-        [ValidateNotNullOrEmpty()]
-    [string[]]$Tags
+        [ValidateScript({$_ -is [hashtable] -and $null -ne $_})]
+    [hashtable]$Tags
 )
 
 #region Variables
@@ -204,7 +204,13 @@ if ($PSBoundParameters.ContainsKey('CreateApp')) {
 
     $appParams.Add('DisplayName', $Name)
     if ($PSBoundParameters.ContainsKey('Tags')) {
-        $appParams.Add('Tag', $Tags)
+        # For some stupid reason, most Azure Cmdlets allow hash tables but not these
+        $null = $tagsAsString
+
+        [string[]]$tagsAsString = foreach ($key in $Tags.Keys) {
+            "$key`:$($Tags[$key])"
+        } 
+        $appParams.Add('Tag', $TagsAsString)
     }
     $appParams.Add('ErrorAction', 'Stop')
 
@@ -217,7 +223,6 @@ if ($PSBoundParameters.ContainsKey('CreateApp')) {
         }
     } catch {
         Write-Warning "Failure creating Azure Application $Name due to error $_."
-        Disconnect-AzAccount
         exit $exitCode_FailureCreateApp
     }
     # Retrieve the Application ID of our new app
@@ -235,7 +240,12 @@ try {
     }
 
     if ($PSBoundParameters.ContainsKey('Tags')) {
-        $spParams.Add('Tag', $Tags)
+        $null = $tagsAsString
+
+        [string[]]$tagsAsString = foreach ($key in $Tags.Keys) {
+            "$key`:$($Tags[$key])"
+        } 
+        $spParams.Add('Tag', $tagsAsString)
     }
     $spParams.Add('ErrorAction', 'Stop')
 
@@ -244,7 +254,6 @@ try {
 
 } catch {
     Write-Warning "Failure creating Service Principal due to error $_."
-    Disconnect-AzAccount
     exit $exitCode_FailureCreateSP
 }
 #endregion
