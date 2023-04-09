@@ -9,11 +9,9 @@ sudo apt-get -y install wget
 
 Run the script and commands
 ```
-wget -o /tmp/wsl2-ubuntu-systemd.sh 
-```
-
-```
 cd /tmp/ && \
+wget https://raw.githubusercontent.com/ZacksHomeLab/ZacksHomeLab/main/scripts/WSL2/ubuntu-systemd/enter-systemd-namespace && \
+wget https://raw.githubusercontent.com/ZacksHomeLab/ZacksHomeLab/main/scripts/WSL2/ubuntu-systemd/start-systemd-namespace && \
+wget https://raw.githubusercontent.com/ZacksHomeLab/ZacksHomeLab/main/scripts/WSL2/ubuntu-systemd/wsl2-ubuntu-systemd.sh && \
 bash wsl2-ubuntu-systemd.sh
-# Enter your password and wait until the script has finished
 ```
