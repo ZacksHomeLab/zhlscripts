@@ -7,8 +7,8 @@
     The Subscription ID within your tenant that will house said Service Principal.
 .PARAMETER SubscriptionName
     The Subscription Name within your tenant that will house said Service Principal.
-.PARAMETER SPName
-    The name of the Service Principal. You may use a display name that already exists within Azure.
+.PARAMETER Name
+    The name of the Service Principal OR Applicaiton Name if -CreateApp is present.
 .PARAMETER TenantID
     If you have access to multiple tenants, input the TenantID that will house said Service Principal.
 .PARAMETER AzCreds
@@ -16,15 +16,17 @@
 .PARAMETER CreateApp
     Pass this switch if you want to create an Azure Application with your Service Principal and assign the App to said Principal.
 .PARAMETER AppName
-    The name of the Azure Application you wish to create. If a name is not given, $SPName will take its place.
+    The name of the Azure Application you wish to create. If a name is not given, $Name will take its place.
+.PARAMETER Tags
+    A comma separated string containing key:value tags attached to the service principal or application (e.g., "key:value", "key2:value2")
 .EXAMPLE
-    ./New-AzServicePrincipal -SubscriptionName "ZacksHomeLab" -SPName "Test SP" -AzCreds (Get-Credential)
+    ./New-AzServicePrincipal -SubscriptionName "ZacksHomeLab" -Name "Test SP" -AzCreds (Get-Credential) -tag "test:value"
 
     The above will create a Service Principal named "Test SP" within Subscription "ZacksHomeLab".
 .EXAMPLE
-    ./New-AzServicePrincipal -SubscriptionID "12341234-1234-1234-123412341234" -CreateApp -AppName "TestApp"
+    ./New-AzServicePrincipal.ps1 -SubscriptionName "ZacksHomeLab" -AzCreds $AzCreds -Name "ZHLKeyVault" -CreateApp -Tag "zhl-resource:zhl-app-keyvault"
     
-    The above will create a Service Principal named "Test SP", create an Azure App named 'TestApp' and assign said app to our new Service Principal.
+    The above will create an Application within Subscription "ZacksHomeLab", creates a Service Principal from the new Applications, and adds the necessary tags.
 .NOTES
     Author - Zack
 .LINK
@@ -49,10 +51,9 @@ param (
     [string]$SubscriptionName,
 
     [parameter(Mandatory,
-        Position=1,
-        helpMessage="What do you want to name your Service Principal?")]
+        Position=1)]
         [ValidateNotNullOrEmpty()]
-    [string]$SPName,
+    [string]$Name,
 
     [parameter(Mandatory=$false,
         Position=2,
@@ -72,23 +73,18 @@ param (
     [switch]$CreateApp,
 
     [parameter(Mandatory=$false,
-        Position=5,
-        HelpMessage="Enter the name of your Azure Application")]
+        Position=5)]
         [ValidateNotNullOrEmpty()]
-    [string]$AppName
+    [string[]]$Tags
 )
 
 #region Variables
 $connectParams = @{}
-$newSPParams = @{}
+$spParams = @{}
 
 if ($PSBoundParameters.ContainsKey('CreateApp')) {
-    if ($null -eq $AppName -or $AppName -eq "") {
-        # Set AppName to SPName if an App Name wasn't provided
-        $AppName = $SPName
-    }
-
     $AppID = $null
+    $appParams = @{}
 }
 #endregion
 
@@ -194,6 +190,7 @@ try {
     if ($PSBoundParameters.ContainsKey('TenantID')) {
         $connectParams.Add('Tenant', $TenantID)
     }
+
     Connect-AzAccount @connectParams -ErrorAction Stop
     
 } catch {
@@ -205,31 +202,46 @@ try {
 #region Create Azure Application
 if ($PSBoundParameters.ContainsKey('CreateApp')) {
 
+    $appParams.Add('DisplayName', $Name)
+    if ($PSBoundParameters.ContainsKey('Tags')) {
+        $appParams.Add('Tag', $Tags)
+    }
+    $appParams.Add('ErrorAction', 'Stop')
+
     try {
-        if (-not (Get-AzAdApplication -DisplayNameStartWith $AppName -ErrorAction SilentlyContinue)) {
-            Write-Verbose "Attempting to create Azure Application $AppName..."
-            New-AzadApplication -DisplayName $AppName -ErrorAction Stop
+        if (-not (Get-AzAdApplication -DisplayNameStartWith $Name -ErrorAction SilentlyContinue)) {
+            Write-Verbose "Attempting to create Azure Application $Name..."
+            New-AzadApplication @appParams
         } else {
-            Write-Verbose "Aplication $AppName already exists in Azure, skipping."
+            Write-Verbose "Aplication $Name already exists in Azure, skipping."
         }
     } catch {
-        Write-Warning "Failure creating Azure Application $AppName due to error $_."
+        Write-Warning "Failure creating Azure Application $Name due to error $_."
+        Disconnect-AzAccount
         exit $exitCode_FailureCreateApp
     }
     # Retrieve the Application ID of our new app
-    $AppID = Get-AzADApplication -DisplayNameStartWith $AppName | Select-Object -ExpandProperty AppId
+    $AppID = Get-AzADApplication -DisplayNameStartWith $Name | Select-Object -ExpandProperty AppId
 }
 #endregion
 
 #region Create Service Principal
 try {
+
     if ($null -ne $AppID) {
-        Write-Verbose "Attempting to create Azure Service Principal with existing application $AppName"
-        New-AzADServicePrincipal -ApplicationId $AppID -ErrorAction Stop
+        $spParams.Add('ApplicationId', $AppID)
     } else {
-        Write-Verbose "Attempting to create Azure Service Principal $SPName..."
-        New-AzADServicePrincipal -DisplayName $SPName
+        $spParams.Add('DisplayName', $Name)
     }
+
+    if ($PSBoundParameters.ContainsKey('Tags')) {
+        $spParams.Add('Tag', $Tags)
+    }
+    $spParams.Add('ErrorAction', 'Stop')
+
+    Write-Verbose "Attempting to create Azure Service Principal $Name..."
+    New-AzADServicePrincipal @spParams
+
 } catch {
     Write-Warning "Failure creating Service Principal due to error $_."
     Disconnect-AzAccount
