@@ -249,6 +249,7 @@ $exitCode_MissingSnapDNSPlugin = 17
 $exitCode_FailureCreateCert = 18
 $exitCode_FailureCreateCrontabFile = 19
 $exitCode_FailureCreateCronJob = 20
+$exitCode_VaultItemEmpty = 21
 #endregion
 
 #Requires -RunAsAdministrator
@@ -356,6 +357,11 @@ if ($PSCmdlet.ParameterSetName -eq 'KeyVault') {
         exit $exitCode_FailureRetrievingSecret
     }
     
+    # Exit if user forgot to save their credentials in their vault item in Azure
+    if ($null -eq $KeyVaultSecret -or $KeyVaultSecret -eq "") {
+        Write-Warning "Successfully retrieved $KeyVaultItem from vault $KeyVault. However, there doesn't appear to be any credentials within said item."
+        exit $exitCode_VaultItemEmpty
+    }
 }
 #endregion
 
