@@ -59,7 +59,7 @@
 
     $EmailCreds = (Get-Credential)
 
-    ./Get-SecurityUpdates.ps1 -Path ".\Updates.csv" -AutoReboot -Install -SendReport -EmailSettings $EmailSettings -Credential $EmailCreds
+    .\Get-SecurityUpdates.ps1 -Path ".\Updates.csv" -AutoReboot -Install -SendReport -EmailSettings $EmailSettings -Credential $EmailCreds
 
     The above example will perform the following:
         - Install Security Updates and reboot if required
