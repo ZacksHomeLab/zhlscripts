@@ -181,51 +181,36 @@ function Start-Command {
         }
     }
     process {
+    
+        # Create ProcessStartInfo object with our provided properties
+        $processStartInfo = New-Object System.Diagnostics.ProcessStartInfo -Property $processStartInfoProps
+        # Start the process
+        $process.StartInfo = $processStartInfo
+        $process.Start() | Out-Null
+        $process.WaitForExit()
 
-        try {
-            
-            # Create ProcessStartInfo object with our provided properties
-            $processStartInfo = New-Object System.Diagnostics.ProcessStartInfo -Property $processStartInfoProps
-            # Start the process
-            $process.StartInfo = $processStartInfo
-            $process.Start() | Out-Null
-            $process.WaitForExit()
-
-            # Redirect Output if any of the conditions are met:
-            if ($RedirectStandardInput) {
-                $redirectObject.Input = $process.StandardInput.ReadToEnd()
-                if ($null -ne $($redirectObject.Input) -or $($redirectObject.Input) -ne "") {
-                    $redirectObject.input = $($redirectObject.input).trim()
-                }
+        # Trim the input/output if -RedirectStandardInput or -RedirectStandardOutput are provided
+        if ($RedirectStandardInput) {
+            $redirectObject.Input = $process.StandardInput.ReadToEnd()
+            if ($null -ne $($redirectObject.Input) -or $($redirectObject.Input) -ne "") {
+                $redirectObject.input = $($redirectObject.input).trim()
             }
+        }
 
-            if ($RedirectStandardOutput) {
-                $redirectObject.Output = $process.StandardOutput.ReadToEnd()
-                if ($null -ne $($redirectObject.Output) -or $($redirectObject.Output) -ne "") {
-                    $redirectObject.Output = $($redirectObject.Output).trim()
-                }
+        if ($RedirectStandardOutput) {
+            $redirectObject.Output = $process.StandardOutput.ReadToEnd()
+            if ($null -ne $($redirectObject.Output) -or $($redirectObject.Output) -ne "") {
+                $redirectObject.Output = $($redirectObject.Output).trim()
             }
-
-            if ($RedirectStandardError) {
-                $redirectObject.Error = $process.StandardError.ReadToEnd()
-                $redirectObject.ExitCode = $process.ExitCode
-
-                if ($null -ne $($redirectObject.Error) -or $($redirectObject.Error) -ne "") {
-                    $redirectObject.Error = $($redirectObject.Error).trim()
-                }
-
-                if ($null -ne $($redirectObject.ExitCode) -or $($redirectObject.ExitCode) -ne "") {
-                    $redirectObject.ExitCode = $($redirectObject.ExitCode).trim()
-                }
-            }
-
-            # Output the object if any of these conditions are true
-            if ($RedirectStandardInput -or $RedirectStandardOutput -or $RedirectStandardError) {
-                $redirectObject
-            }
-            
-        } catch {
-            Throw "Start-Command: Failed running command $commandPath due to error: $($Error.Exception.Message)"
+        }
+        
+        # Regardless if we have an error or not, this is required if we want try / catch to work.
+        $redirectObject.Error = $process.StandardError.ReadToEnd()
+        $redirectObject.ExitCode = $process.ExitCode
+        
+        # Output the object if any of these conditions are true
+        if ($RedirectStandardInput -or $RedirectStandardOutput -or $RedirectStandardError) {
+            $redirectObject
         }
     }
 }
