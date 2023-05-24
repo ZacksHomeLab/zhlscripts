@@ -39,7 +39,7 @@
     Example #2:
     This example is simular to Example #1, except it accepts comma-separated arguments.
 .INPUTS
-    System.Management.Automation.Runspaces.PSSession
+    None
 .OUTPUTS
     None
 #>
