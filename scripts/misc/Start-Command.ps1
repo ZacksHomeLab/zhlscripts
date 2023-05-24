@@ -38,12 +38,23 @@
 
     Example #2:
     This example is simular to Example #1, except it accepts comma-separated arguments.
+
+.EXAMPLE
+    $Output = (Start-Command -Name 'whoami' -RedirectStandardOutput).Output
+
+    if ($Output -ne "root") {
+        Write-Output "You are not root"
+    }
+    Write-Output "You are root!"
+
+    Example #3:
+    This example demonstrates how to retrieve the output of said Command and use it for conditionals.
 .INPUTS
     None
 .OUTPUTS
-    None
+    System.String
 #>
-function Start-Process {
+function Start-Command {
     [CmdletBinding(DefaultParameterSetName = 'Default')]
     param (
         [parameter(Mandatory,
@@ -140,20 +151,34 @@ function Start-Process {
 
         if ($PSBoundParameters.ContainsKey('RedirectStandardInput')) {
             $processStartInfoProps.add('RedirectStandardInput', $RedirectStandardInput)
+        } else {
+            $RedirectStandardInput = $false
         }
 
         if ($PSBoundParameters.ContainsKey('RedirectStandardOutput')) {
             $processStartInfoProps.add('RedirectStandardOutput', $RedirectStandardOutput)
+        } else {
+            $RedirectStandardOutput = $false
         }
 
         if ($PSBoundParameters.ContainsKey('RedirectStandardError')) {
             $processStartInfoProps.add('RedirectStandardError', $RedirectStandardError)
+        } else {
+            $RedirectStandardError = $false
         }
 
         if ($PSBoundParameters.ContainsKey('LoadUserProfile')) {
             $processStartInfoProps.add('LoadUserProfile', $LoadUserProfile)
         }
         #endregion
+
+        $redirectObject = [pscustomobject]@{
+            Title = $Name
+            Input = ''
+            Output = ''
+            Error = ''
+            ExitCode = ''
+        }
     }
     process {
 
@@ -166,6 +191,39 @@ function Start-Process {
             $process.Start() | Out-Null
             $process.WaitForExit()
 
+            # Redirect Output if any of the conditions are met:
+            if ($RedirectStandardInput) {
+                $redirectObject.Input = $process.StandardInput.ReadToEnd()
+                if ($null -ne $($redirectObject.Input) -or $($redirectObject.Input) -ne "") {
+                    $redirectObject.input = $($redirectObject.input).trim()
+                }
+            }
+
+            if ($RedirectStandardOutput) {
+                $redirectObject.Output = $process.StandardOutput.ReadToEnd()
+                if ($null -ne $($redirectObject.Output) -or $($redirectObject.Output) -ne "") {
+                    $redirectObject.Output = $($redirectObject.Output).trim()
+                }
+            }
+
+            if ($RedirectStandardError) {
+                $redirectObject.Error = $process.StandardError.ReadToEnd()
+                $redirectObject.ExitCode = $process.ExitCode
+
+                if ($null -ne $($redirectObject.Error) -or $($redirectObject.Error) -ne "") {
+                    $redirectObject.Error = $($redirectObject.Error).trim()
+                }
+
+                if ($null -ne $($redirectObject.ExitCode) -or $($redirectObject.ExitCode) -ne "") {
+                    $redirectObject.ExitCode = $($redirectObject.ExitCode).trim()
+                }
+            }
+
+            # Output the object if any of these conditions are true
+            if ($RedirectStandardInput -or $RedirectStandardOutput -or $RedirectStandardError) {
+                $redirectObject
+            }
+            
         } catch {
             Throw "Start-Command: Failed running command $commandPath due to error: $($Error.Exception.Message)"
         }
