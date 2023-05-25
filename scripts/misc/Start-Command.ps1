@@ -9,7 +9,7 @@
     will NOT work. Use the build-in PowerShell commands for those.
 .PARAMETER Name
     The path or name of the command to be ran.
-.PARAMETER CommandArguments
+.PARAMETER Arguments
     The optional parameters/arguments to be added with your command.
 .PARAMETER WorkingDirectory
     The current WorkingDirectory to run said Command. If you are not using the full path to files, you should probably
@@ -17,13 +17,24 @@
 .PARAMETER LoadUserProfile
     Gets or sets a value that indicates whether the Windows user profile is to be loaded from the registry.
 
-    This will NOT work on Unix/Linux/Mac.
-.PARAMETER RedirectStandardInput
-    Gets or sets a value indicating whether the input for an application is read from the StandardInput stream.
-.PARAMETER RedirectStandardOutput
-    Gets or sets a value that indicates whether the textual output of an application is written to the StandardOutput stream.
-.PARAMETER RedirectStandardError
-    Gets or sets a value that indicates whether the error output of an application is written to the StandardError stream.
+    This will NOT work on Unix/Linux.
+.PARAMETER Timer
+    Provide a timer (in ms) for how long you want to wait for the process to exit/end.
+.PARAMETER Verb
+    Specifies a verb to use when this cmdlet starts the process. The verbs that are available are determined by the filename extension of the file that runs in the process.
+
+    The following table shows the verbs for some common process file types.
+
+    File type	Verbs
+    .cmd	Edit, Open, Print, RunAs, RunAsUser
+    .exe	Open, RunAs, RunAsUser
+    .txt	Open, Print, PrintTo
+    .wav	Open, Play
+    To find the verbs that can be used with the file that runs in a process, use the New-Object cmdlet to create a System.Diagnostics.ProcessStartInfo object for the file. The available verbs are in the Verbs property of the ProcessStartInfo object. For details, see the examples.
+
+    This will NOT work on Unix/Linux.
+.PARAMETER Passthru
+    Pass the object into the pipeline. Using -Passthru will ignore error-handling.
 .NOTES
     Author - Zack Flowers
 .LINK
@@ -38,24 +49,28 @@
 
     Example #2:
     This example is simular to Example #1, except it accepts comma-separated arguments.
-
 .EXAMPLE
-    $Output = (Start-Command -Name 'whoami' -RedirectStandardOutput).Output
+    $whoami = Start-Command -Name 'whoami' -Passthru
 
-    if ($Output -ne "root") {
-        Write-Output "You are not root"
-    }
-    Write-Output "You are root!"
+    $whoami
+
+    Title        : whoami
+    OutputStream : System.Management.Automation.PSEventJob
+    OutputData   : zac
+    ErrorStream  : 
+    ErrorData    : 
+    ExitCode     : 0
 
     Example #3:
-    This example demonstrates how to retrieve the output of said Command and use it for conditionals.
+    This example utilizes the -Passthru feature of this script.
 .INPUTS
     None
 .OUTPUTS
     System.String
+    System.Management.Automation.PSCustomObject
 #>
 function Start-Command {
-    [CmdletBinding(DefaultParameterSetName = 'Default')]
+    [cmdletbinding(DefaultParameterSetName="default")]
     param (
         [parameter(Mandatory,
             Position=0,
@@ -67,11 +82,11 @@ function Start-Command {
             Position=1,
             ValueFromPipelineByPropertyName)]
             [ValidateNotNullOrEmpty()]
-        [object]$CommandArguments,
+        [object]$Arguments,
 
         [parameter(Mandatory=$false,
             ValueFromPipelineByPropertyName)]
-        [ValidateScript({Test-Path $_})]
+            [ValidateScript({Test-Path $_})]
         [string]$WorkingDirectory,
 
         [parameter(Mandatory=$false)]
@@ -82,24 +97,31 @@ function Start-Command {
             })]
         [switch]$LoadUserProfile,
 
-        [parameter(Mandatory=$false)]
-        [switch]$RedirectStandardOutput = $false,
+        [parameter(Mandatory,
+            ValueFromPipelineByPropertyName,
+            ParameterSetName="timer")]
+            [ValidateRange(1, 600000)]
+        [int]$Timer,
+
+        [parameter(Mandatory=$false,
+            ValueFromPipelineByPropertyName)]
+            [ValidateScript({
+                if ($PSVersionTable.Platform -eq "Unix") {
+                    Throw "-Verb cannot be used on Unix/Linux."
+                }
+            })]
+        [string]$Verb,
 
         [parameter(Mandatory=$false)]
-        [switch]$RedirectStandardInput = $false,
-
-        [parameter(Mandatory=$false)]
-        [switch]$RedirectStandardError = $false
+        [switch]$Passthru
     )
 
     begin {
-        
-        $process = New-Object System.Diagnostics.Process
-        
-        # Retrieve the command's path 
-        $commandPath = (Get-Command -Name $Name -ErrorAction SilentlyContinue).Source
+        $FileName = (Get-Command -Name $Name -ErrorAction SilentlyContinue).Source
 
-        if ($null -eq $commandPath -or $commandPath -eq "") {
+        # If we cannot find the provided FileName, this could be due to the user providing..
+        # ..a command that is a PowerShell Alias (e.g., echo, history, cp)
+        if ($null -eq $FileName -or $FileName -eq "") {
             
             # Source doesn't exist. Let's see if the provided command is a PowerShell command
             $getPSCommand = (Get-Command -Name $Name -ErrorAction SilentlyContinue)
@@ -122,95 +144,119 @@ function Start-Command {
                 Throw "Start-Command: This function should only be used for Non-PowerShell commands (e.g., wget, touch, mkdir, etc.)"
             }
 
-            # Retrieve the version of PowerShell and its location and replace $commandPath with it
-            if ($PSVersionTable.PSEdition -eq 'Core') {
-                $commandPath = (Get-Command -Name 'pwsh').Source
-            } else {
-                $commandPath = (Get-Command -Name 'powershell').Source
-            }
+            # Retrieve the version of PowerShell and its location and replace $FileName with it
+            $FileName = $PSVersionTable.PSEdition -eq 'Core' ? (Get-Command -Name 'pwsh').Source : (Get-Command -Name 'powershell').Source
             
-            #$test = "-noprofile -Command {$getPSCommand $CommandArguments}"
             # Reconfigure Arguments to execute PowerShell
-            $CommandArguments = "-noprofile -Command `"& {$($getPSCommand.ReferencedCommand.Name) $CommandArguments}`""
+            $Arguments = "-noprofile -Command `"& {$($getPSCommand.ReferencedCommand.Name) $Arguments}`""
         }
 
-        #region Populate ProcessStartInfo properties
-        $processStartInfoProps = @{
-            FileName                = $commandPath
-            UseShellExecute         = $False
-        }
-        
-        # Add arguments if they were provided
-        if ($PSBoundParameters.ContainsKey('CommandArguments')) {
-            $processStartInfoProps.add('Arguments', $CommandArguments)
-        }
-
-        if ($PSBoundParameters.ContainsKey('WorkingDirectory')) {
-            $processStartInfoProps.add('WorkingDirectory', $WorkingDirectory)
-        }
-
-        if ($PSBoundParameters.ContainsKey('RedirectStandardInput')) {
-            $processStartInfoProps.add('RedirectStandardInput', $RedirectStandardInput)
-        } else {
-            $RedirectStandardInput = $false
-        }
-
-        if ($PSBoundParameters.ContainsKey('RedirectStandardOutput')) {
-            $processStartInfoProps.add('RedirectStandardOutput', $RedirectStandardOutput)
-        } else {
-            $RedirectStandardOutput = $false
-        }
-
-        if ($PSBoundParameters.ContainsKey('RedirectStandardError')) {
-            $processStartInfoProps.add('RedirectStandardError', $RedirectStandardError)
-        } else {
-            $RedirectStandardError = $false
-        }
-
-        if ($PSBoundParameters.ContainsKey('LoadUserProfile')) {
-            $processStartInfoProps.add('LoadUserProfile', $LoadUserProfile)
-        }
-        #endregion
-
-        $redirectObject = [pscustomobject]@{
-            Title = $Name
-            Input = ''
-            Output = ''
-            Error = ''
-            ExitCode = ''
+        # Data Object will store all streams of data from our command
+        $dataObject = [pscustomobject]@{
+            Title        = $Name
+            OutputStream = ''
+            OutputData   = ''
+            ErrorData    = ''
+            ExitCode     = 0
         }
     }
     process {
-    
-        # Create ProcessStartInfo object with our provided properties
-        $processStartInfo = New-Object System.Diagnostics.ProcessStartInfo -Property $processStartInfoProps
-        # Start the process
-        $process.StartInfo = $processStartInfo
-        $process.Start() | Out-Null
-        $process.WaitForExit()
 
-        # Trim the input/output if -RedirectStandardInput or -RedirectStandardOutput are provided
-        if ($RedirectStandardInput) {
-            $redirectObject.Input = $process.StandardInput.ReadToEnd()
-            if ($null -ne $($redirectObject.Input) -or $($redirectObject.Input) -ne "") {
-                $redirectObject.input = $($redirectObject.input).trim()
-            }
+        $processStartInfoProps = @{
+            Arguments               = $null -ne $Arguments ? $Arguments : $null
+            CreateNoWindow          = $true
+            ErrorDialog             = $false
+            FileName                = $FileName
+            RedirectStandardError   = $true
+            RedirectStandardInput   = $true
+            RedirectStandardOutput  = $true
+            UseShellExecute         = $false
+            WindowStyle             = [System.Diagnostics.ProcessWindowStyle]::Hidden
+            WorkingDirectory        = $PSBoundParameters.ContainsKey('WorkingDirectory') ? $WorkingDirectory : $PSScriptRoot
+            Verb                    = $PSBoundParameters.ContainsKey('Verb') ? $Verb : $null
         }
 
-        if ($RedirectStandardOutput) {
-            $redirectObject.Output = $process.StandardOutput.ReadToEnd()
-            if ($null -ne $($redirectObject.Output) -or $($redirectObject.Output) -ne "") {
-                $redirectObject.Output = $($redirectObject.Output).trim()
+        # This will Error on Unix/Linux Systems if property LoadUserProfile is added regardless if it's null or false.
+        if ($PSBoundParameters.ContainsKey('LoadUserProfile')) {
+            $processStartInfoProps.Add('LoadUserProfile', $LoadUserProfile)
+        }
+
+        try {
+
+            $process = New-Object System.Diagnostics.Process
+            $process.EnableRaisingEvents = $true
+
+            $processStartInfo = New-Object System.Diagnostics.ProcessStartInfo -Property $processStartInfoProps
+            $process.StartInfo = $processStartInfo
+
+            # Register Process OutputDataReceived:
+            #   This will create a background job to capture output data
+            #   Reference: https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.process.standardoutput?redirectedfrom=MSDN&view=net-7.0#System_Diagnostics_Process_StandardOutput
+            $outputEventParams = @{
+                InputObject = $process
+                SourceIdentifier = 'OnOutputDataReceived '
+                EventName = 'OutputDataReceived'
+                Action = {
+                    param (
+                        [System.Object]$sender,
+                        [System.Diagnostics.DataReceivedEventArgs]$e
+                    )
+
+                    foreach ($data in $e.Data) { 
+                        if ($null -ne $data -and $data -ne "") { 
+                            $($data).Trim()
+                        } 
+                    }
+                }
+            }
+            $dataObject.OutputStream = Register-ObjectEvent @outputEventParams
+
+            # Start the process/command
+            if ($process.Start()) {
+                $process.BeginOutputReadLine()
+                $dataObject.ErrorData = $process.StandardError.ReadToEnd()
+
+                if ($PSCmdlet.ParameterSetName -eq 'timer') {
+                    $process.WaitForExit($Timer) | Out-Null
+                } else {
+                    $process.WaitForExit()
+                }
+            }
+            
+            # Retrieve the exit code and the OutputStream Job
+            $dataObject.ExitCode = $process.ExitCode
+            $dataObject.OutputData = Receive-Job -id $($dataObject.OutputStream.id)
+
+            [bool]$hasError = ($null -ne $($dataObject.ErrorData) -and $($dataObject.ErrorData) -ne "") ? $true : $false
+            [bool]$hasOutput = ($null -ne $($dataObject.OutputData) -and $($dataObject.OutputData) -ne "") ? $true : $false
+
+            # Output Errors or Output if -PassThru was not provided
+            if ($Passthru) {
+                if ($hasError) {
+                    $dataObject.ErrorData = $($dataObject.ErrorData.Trim())
+                }
+                $dataObject
+            } else {
+
+                if ($hasError) {
+                    if ($($ErrorActionPreference) -ne 'Stop') {
+                        Write-Error "Exit Code $($dataObject.ExitCode): $($dataObject.ErrorData.Trim())"
+                    } else {
+                        Throw "Exit Code $($dataObject.ExitCode): $($dataObject.ErrorData.Trim())"
+                    }
+                }
+
+                if ($hasOutput) {
+                    $($dataObject.OutputData)
+                }
             }
         }
-        
-        # Regardless if we have an error or not, this is required if we want try / catch to work.
-        $redirectObject.Error = $process.StandardError.ReadToEnd()
-        $redirectObject.ExitCode = $process.ExitCode
-        
-        # Output the object if any of these conditions are true
-        if ($RedirectStandardInput -or $RedirectStandardOutput -or $RedirectStandardError) {
-            $redirectObject
+        finally {
+
+            # Cleanup
+            $process.Close()
+            Unregister-Event -SourceIdentifier $($dataObject.OutputStream.Name) -Force | Out-Null
+            Remove-Job -Id $($dataObject.OutputStream.Id) -Force
         }
     }
 }
