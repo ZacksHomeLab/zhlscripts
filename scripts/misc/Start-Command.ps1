@@ -227,10 +227,10 @@ function Start-Command {
             $dataObject.ExitCode = $process.ExitCode
             $dataObject.OutputData = Receive-Job -id $($dataObject.OutputStream.id)
 
-            [bool]$hasError = ($null -ne $($dataObject.ErrorData) -and $($dataObject.ErrorData) -ne "") ? $true : $false
+            [bool]$hasError = ($null -ne $($dataObject.ErrorData) -and $($dataObject.ErrorData) -ne "" -and $($dataObject.ExitCode) -ne 0) ? $true : $false
             [bool]$hasOutput = ($null -ne $($dataObject.OutputData) -and $($dataObject.OutputData) -ne "") ? $true : $false
 
-            # Output Errors or Output if -PassThru was not provided
+            # Output the PSCustomObject if -Passthru is provided.
             if ($Passthru) {
                 if ($hasError) {
                     $dataObject.ErrorData = $($dataObject.ErrorData.Trim())
