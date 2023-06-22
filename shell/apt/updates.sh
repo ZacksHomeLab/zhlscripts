@@ -2,9 +2,6 @@
 
 export DEBIAN_FRONTEND=noninteractive
 
-apt_lock_max_wait_time=600
-apt_retry_interval=10
-
 function get_package_provider() {
   # Determine our package provider
   local os_type=$(grep ^ID_LIKE /etc/os-release | cut -f2 -d=)
@@ -39,7 +36,10 @@ function is_apt_lock() {
 
 function wait_for_apt_unlock() {
 
-  wait_time=0
+  local apt_lock_max_wait_time=600
+  local apt_retry_interval=10
+  local wait_time=0
+  
   while is_apt_lock; do
     if [ "$wait_time" -ge "$apt_lock_max_wait_time" ]; then
       echo "wait_for_apt_unlock: Timeout reached. Lock file is still present."
