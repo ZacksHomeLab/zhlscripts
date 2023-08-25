@@ -28,7 +28,7 @@ $Seed = 1000
     $null = $a3.Add($(Measure-Command {
 
         $ListAddRange = [System.Collections.Generic.List[Int]]::new()
-        $ListAddRange = $ListAddRange.AddRange([int[]](1..10000))
+        $ListAddRange.AddRange([int[]](1..10000))
 
         $ListAddRange = foreach ($i in 1..10000) {
             Get-Random -SetSeed $Seed -Minimum 1 -Maximum 10000
@@ -80,10 +80,10 @@ ArrayForEachNoAdd,     $($a6 | Measure-Object -Sum | ForEach-Object {$_.sum.tost
 <#
 Method               Time
 ------               ----
-ArrayPreAllocForEach 007.91318
-ListAddRange         007.95729
-ListForEach          008.02663
-ArrayForEachNoAdd    009.27605
-ListDotAdd           017.65320
-ArrayForEach         118.17716
+ListForEach          009.04267
+ArrayForEachNoAdd    009.04949
+ArrayPreAllocForEach 009.06247
+ListAddRange         009.10966
+ListDotAdd           011.54658
+ArrayForEach         118.77859
 #>
