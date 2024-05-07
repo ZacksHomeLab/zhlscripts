@@ -1,0 +1,48 @@
+{
+    "editor.fontSize": 14,
+    "editor.formatOnSave": true,
+    "editor.minimap.enabled": false,
+    "extensions.ignoreRecommendations": true,
+    "powershell.buttons.showRunButtons": false,
+    "powershell.codeFormatting.addWhitespaceAroundPipe": true,
+    "powershell.codeFormatting.autoCorrectAliases": true,
+    "powershell.codeFormatting.avoidSemicolonsAsLineTerminators": true,
+    "powershell.codeFormatting.ignoreOneLineBlock": false,
+    "powershell.codeFormatting.pipelineIndentationStyle": "IncreaseIndentationForFirstPipeline",
+    "powershell.codeFormatting.trimWhitespaceAroundPipe": true,
+    "powershell.codeFormatting.whitespaceBetweenParameters": true,
+    "powershell.enableProfileLoading": true,
+    "powershell.integratedConsole.suppressStartupBanner": true,
+    "powershell.pester.codeLens": false,
+    "powershell.pester.useLegacyCodeLens": false,
+    "powershell.promptToUpdatePowerShell": false,
+    "powershell.scriptAnalysis.enable": true,
+    "powershell.scriptAnalysis.settingsPath": "PSScriptAnalyzerSettings.psd1",
+    "[powershell]": {
+        "debug.saveBeforeStart": "nonUntitledEditorsInActiveGroup",
+        "editor.autoClosingBrackets": "never",
+        "editor.autoClosingQuotes": "never",
+        "editor.parameterHints.enabled": true,
+        "editor.quickSuggestions": {
+            "other": true,
+            "comments": true,
+            "strings": true
+        },
+        "editor.quickSuggestionsDelay": 1,
+        "editor.renderControlCharacters": true,
+        "editor.rulers": [
+            160
+        ],
+        "editor.semanticHighlighting.enabled": false,
+        "editor.snippetSuggestions": "none",
+        "editor.suggest.localityBonus": true,
+        "editor.suggest.showWords": false,
+        "editor.suggest.showFiles": false,
+        "editor.suggest.showFolders": false,
+        "editor.suggest.showSnippets": false,
+        "editor.wordSeparators": "`~!@#$%^&*()=+[{]}\\|;:'\",.<>/?",
+    },
+    "terminal.integrated.enableMultiLinePasteWarning": "never",
+    "terminal.integrated.stickyScroll.enabled": false
+    //"workbench.colorTheme": "Main Theme / Custom Github Dark Dimmed"
+}
