@@ -1,7 +1,7 @@
 # FQDN RegEx
 
 ```
-^(?=.{1,255}$)([a-zA-Z0-9](?:(?:[a-zA-Z0-9\-]){0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$
+^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$
 ```
 
 ## Matching Examples
@@ -15,7 +15,6 @@ ad.example.domain.com
 ## Non-Matching Examples
 
 ```
-ad.example.123
 ad.example.c
 ad.example.
 ```
